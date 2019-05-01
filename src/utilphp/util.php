@@ -214,6 +214,12 @@ class util
             'ä' => 'a',
             'ö' => 'o'
         ),
+        'fa'=>array( /* Farsi */
+            'آ'=>'aa', 'ا' => 'a', 'ب' => 'b','پ'=>'p', 'ت' => 't', 'ث' => 'th', 'ج' => 'j','چ'=>'ch', 'ح' => 'h', 'خ' => 'kh', 'د' => 'd',
+           'ذ' => 'z', 'ر' => 'r', 'ز' => 'z' , 'ژ'=>'zh','س' => 's', 'ش' => 'sh', 'ص' => 's','ض'=>'z', 'د' => 'd', 'ط' => 't',
+           'ظ' => 'th', 'ع' => 'aa', 'غ' => 'gh', 'ف' => 'f', 'ق' => 'gh', 'ك' => 'k', 'گ'=>'g', 'ل' => 'l', 'م' => 'm',
+           'ن' => 'n', 'ه' => 'h', 'و' => 'o', 'ي' => 'y'   ,'ی'=>'y' , 'ِ'=>'e' , 'ُ'=>'o' ,'َ'=>'a'
+        )
     );
 
     /**
@@ -279,7 +285,7 @@ class util
 
         self::$regex = '/[' . self::$chars . ']/u';
     }
-    
+
     /**
      * Remove the duplicates from an array.
      *
@@ -320,6 +326,48 @@ class util
         }
 
         return $default;
+    }
+
+    /**
+     * Returns boolean if a function is an associative array
+     *
+     * @param  array   $array        An array to test
+     *
+     * @return boolean
+     */
+    public static function is_assoc_array($array)
+    {
+        if (!is_array($array)) {
+            return false;
+        }
+
+        // $array = array() is not associative
+        if (sizeof($array) === 0) {
+            return false;
+        }
+
+        return array_keys($array) !== range(0, count($array) - 1);
+    }
+
+    /**
+     * Returns boolean if a function is flat/sequential numeric array
+     *
+     * @param  array   $array        An array to test
+     *
+     * @return boolean
+     */
+    public static function is_numeric_array($array)
+    {
+        if (!is_array($array)) { return false; }
+
+        $current = 0;
+        foreach (array_keys($array) as $key) {
+            if ($key !== $current) { return false; }
+
+            $current++;
+        }
+
+        return true;
     }
 
     /**
@@ -727,9 +775,8 @@ class util
         // Is it the serialized NULL value?
         if ($data === 'N;') {
             return true;
-        }
-        // Is it a serialized boolean?
-        elseif ($data === 'b:0;' || $data === 'b:1;') {
+        } elseif ($data === 'b:0;' || $data === 'b:1;') {
+            // Is it a serialized boolean?
             return true;
         }
 
@@ -757,7 +804,7 @@ class util
      */
     public static function fix_broken_serialization($brokenSerializedData)
     {
-        $fixdSerializedData = preg_replace_callback('!s:(\d+):"(.*?)";!', function($matches) {
+        $fixdSerializedData = preg_replace_callback('!s:(\d+):"(.*?)";!', function ($matches) {
             $snip = $matches[2];
             return 's:' . strlen($snip) . ':"' . $snip . '";';
         }, $brokenSerializedData);
@@ -770,9 +817,18 @@ class util
      *
      * @return boolean
      */
-    public static function is_https()
+    public static function is_https($trust_proxy_headers = false)
     {
-        return isset($_SERVER['HTTPS']) && !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off';
+        // Check standard HTTPS header
+        if (isset($_SERVER['HTTPS']) && !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') {
+           return isset($_SERVER['HTTPS']) && !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off';
+        }
+
+        // Check proxy headers if allowed
+        return $trust_proxy_headers && isset($_SERVER['X-FORWARDED-PROTO']) && $_SERVER['X-FORWARDED-PROTO'] == 'https';
+
+        // Default to not SSL
+        return false;
     }
 
     /**
@@ -921,9 +977,9 @@ class util
             if (isset($parts['path']) && ($flags & self::HTTP_URL_JOIN_PATH)) {
                 if (isset($url['path']) && substr($parts['path'], 0, 1) !== '/') {
                     $url['path'] = rtrim(
-                            str_replace(basename($url['path']), '', $url['path']),
-                            '/'
-                        ) . '/' . ltrim($parts['path'], '/');
+                        str_replace(basename($url['path']), '', $url['path']),
+                        '/'
+                    ) . '/' . ltrim($parts['path'], '/');
                 } else {
                     $url['path'] = $parts['path'];
                 }
@@ -1040,7 +1096,7 @@ class util
      * Check if a string ends with the given string.
      *
      * @param  string $string
-     * @param  string $starts_with
+     * @param  string $ends_with
      * @return boolean
      */
     public static function ends_with($string, $ends_with)
@@ -1415,7 +1471,7 @@ class util
 
     protected static function numberToWordConvertGroup($index)
     {
-        switch($index) {
+        switch ($index) {
             case 11:
                 return ' decillion';
             case 10:
@@ -2230,7 +2286,7 @@ class util
     {
         $flattened = array();
 
-        array_walk_recursive($array, function($value, $key) use (&$flattened, $preserve_keys) {
+        array_walk_recursive($array, function ($value, $key) use (&$flattened, $preserve_keys) {
             if ($preserve_keys && !is_int($key)) {
                 $flattened[$key] = $value;
             } else {
@@ -2357,6 +2413,32 @@ class util
         }
 
         return $array;
+    }
+
+    /**
+     * Merges two arrays recursively and returns the result.
+     *
+     * @param   array   $dest               Destination array
+     * @param   array   $src                Source array
+     * @param   boolean $appendIntegerKeys  Whether to append elements of $src
+     *                                      to $dest if the key is an integer.
+     *                                      This is the default behavior.
+     *                                      Otherwise elements from $src will
+     *                                      overwrite the ones in $dest.
+     * @return  array
+     */
+    public static function array_merge_deep(array $dest, array $src, $appendIntegerKeys = true)
+    {
+        foreach ($src as $key => $value) {
+            if (is_int($key) and $appendIntegerKeys) {
+                $dest[] = $value;
+            } elseif (isset($dest[$key]) and is_array($dest[$key]) and is_array($value)) {
+                $dest[$key] = static::array_merge_deep($dest[$key], $value, $appendIntegerKeys);
+            } else {
+                $dest[$key] = $value;
+            }
+        }
+        return $dest;
     }
 
     public static function array_clean(array $array)
@@ -2562,8 +2644,11 @@ class util
      */
     public static function get_user_directory()
     {
-        if (isset($_SERVER['HOMEDRIVE'])) return $_SERVER['HOMEDRIVE'] . $_SERVER['HOMEPATH'];
-        else return $_SERVER['HOME'];
+        if (isset($_SERVER['HOMEDRIVE'])) {
+            return $_SERVER['HOMEDRIVE'] . $_SERVER['HOMEPATH'];
+        }
+
+        return $_SERVER['HOME'];
     }
 
     /**

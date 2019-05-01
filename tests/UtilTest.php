@@ -76,6 +76,45 @@ class UtilityPHPTest extends PHPUnit_Framework_TestCase
         $this->assertEquals( 'defaultval', util::array_get( $_GET['doesnotexist'], 'defaultval' ) );
     }
 
+    public function test_array_merge_deep()
+    {
+        // Simple append
+        $dest = array('a','b','c');
+        $src = array('d','e','f');
+        $result = array('a','b','c','d','e','f');
+        $this->assertEquals($result,util::array_merge_deep($dest,$src));
+
+        // Nested append
+        $dest = array('a','b','2d'=>array('c'));
+        $src = array('2d'=>array('d','e','f'));
+        $result = array('a','b','2d'=>array('c','d','e','f'));
+        $this->assertEquals($result,util::array_merge_deep($dest,$src));
+
+        // Nested int key overwrite
+        $dest = array(
+            'a',
+            'b'=>array(
+                'c'=>array('d','e'),
+                'h'=>0
+            )
+        );
+        $src = array(
+            'b'=>array(
+                'c'=>array('f','g'),
+                'h'=>array('i','j')
+            )
+        );
+        $result = array(
+            'a',
+            'b'=>array(
+                'c'=>array('f','g'),
+                'h'=>array('i','j')
+            )
+        );
+        $this->assertEquals($result,util::array_merge_deep($dest,$src,false));
+
+    }
+
     public function test_slugify()
     {
         $this->assertEquals( 'a-simple-title', util::slugify( 'A simple title' ) );
@@ -369,6 +408,32 @@ class UtilityPHPTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(array('hello', 'world', 'this', 'is', 'a', 'test', 'word'), util::integerarray_remove_duplicates($array));
 	}
 	
+    public function test_is_numeric_array()
+    {
+        $this->assertTrue( util::is_numeric_array(array()) );
+        $this->assertTrue( util::is_numeric_array(array(5,6,7)) );
+        $this->assertTrue( util::is_numeric_array(array(0 => 3, 1 => 3, 2 => 3)) );
+        $this->assertTrue( util::is_numeric_array(array('foo','bar','baz')) );
+
+        $this->assertFalse( util::is_numeric_array('foo') );
+        $this->assertFalse( util::is_numeric_array(array('foo' => 'bar')) );
+        $this->assertFalse( util::is_numeric_array(1,2,3) );
+        $this->assertFalse( util::is_numeric_array(array("foo" => array('nested'=>'array'))) );
+        $this->assertFalse( util::is_numeric_array(array(0 => 3, 2 => 3, 3 => 3)) );
+    }
+
+    public function test_is_assoc_array()
+    {
+        $this->assertTrue( util::is_assoc_array(array('foo'=>'bar','color'=>'yellow')) );
+        $this->assertTrue( util::is_assoc_array(array("foo" => array('nested'=>'array'))) );
+        $this->assertTrue( util::is_assoc_array(array(1 => "baz",'two' => 'bar')) );
+
+        $this->assertFalse( util::is_assoc_array(array(1,2,3)) );
+        $this->assertFalse( util::is_assoc_array("foo") );
+        $this->assertFalse( util::is_assoc_array(array(array('nested'=>'array'))) );
+        $this->assertFalse( util::is_assoc_array(array()) );
+    }
+
     public function test_array_pluck()
     {
         $array = array(
